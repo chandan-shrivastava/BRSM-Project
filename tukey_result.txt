@@ -1,0 +1,4 @@
+Length	Class	Mode
+PercAccuracy	19800	-none-	numeric
+Rep1	    4	-none-	numeric
+PercAccuracy:Rep1	79600	-none-	numeric

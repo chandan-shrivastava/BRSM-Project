@@ -1,0 +1,213 @@
+```{r}
+# Read the data from the Excel file
+library(readxl)
+data <- read.csv("Data/Exp1/DataTrialsLevelResultsExp1.csv")
+#print first 10 rows of the data
+head(data, 10)
+
+avgData <- data.frame(data)
+avgData <- avgData %>%
+  group_by(ParticipantPublicID, True1, Rep1) %>%
+  summarize(Sharing = mean(Sharing), 
+            PercAccuracy = mean(PercAccuracy),
+            SM = mean(SM), .groups = 'keep')
+dim(avgData)
+head(avgData, 10)
+```
+
+```{r}
+group1 <- subset(data, Rep1 == 0)$Sharing
+group2 <- subset(data, Rep1 == 1)$Sharing
+
+# Perform the two-sample t-test
+t.test(group1, group2, var.equal = TRUE)
+```
+
+```{r}
+bartlett.test(Sharing ~ Rep1, data = data)
+```
+
+
+```{r}
+result <- aov(Sharing ~ factor(Rep1), data = data)
+
+# Print the ANOVA table
+summary(result)
+```
+There is no significant difference in the mean sharing rating between participants who were exposed to a repeated statement and those who were not exposed to it.
+We use one way ANOVA to test this hypothesis.
+
+```{r}
+# One way ANOVA on the mean sharing rating
+#seaparate the data into two groups based on the repeated statement exposure
+data1 <- data[data$Rep1 == 1,]
+data2 <- data[data$Rep1 == 0,]
+
+#perform one way ANOVA
+oneway.test(Sharing ~ Rep1, data, var.equal = TRUE)
+```
+
+
+# hypothesis 2
+```{r}
+# conduct two-way ANOVA
+data_temp <- data
+data_temp$PercAccuracy <- as.factor(data_temp$PercAccuracy)
+data_temp$Rep1 <- as.factor(data_temp$Rep1)
+model <- aov(Sharing ~ PercAccuracy * Rep1, data = data_temp)
+
+# model <- aov(SM ~ PercAccuracy * Rep1, data_temp)
+
+# # display summary of results
+summary(model)
+print(model)
+```
+
+```{r}
+avgDataForMultiple <- data.frame(avgData) %>%
+  group_by(ParticipantPublicID, Rep1) %>%
+  summarize(Sharing = mean(Sharing), 
+            PercAccuracy = mean(PercAccuracy), .groups = 'keep')
+avgDataForMultiple$Accurate <- ifelse(avgDataForMultiple$PercAccuracy <= 25, -1, ifelse(avgDataForMultiple$PercAccuracy >= 75, 1, 0))
+head(avgDataForMultiple, 10)
+
+model <- lm(formula = Sharing ~ Accurate + Rep1 + Accurate * Rep1, data = avgDataForMultiple)
+summary(model)
+```
+
+
+```{r}
+# load necessary libraries
+library(ggplot2)
+
+# create scatter plot
+ggplot(data_temp, aes(x=PercAccuracy, y=Sharing, color=factor(Rep1))) + 
+  geom_point() +
+  labs(x="Perceived Accuracy Rating", y="Sharing Rating", color="Repetition Status") +
+  theme_dark()
+```
+
+# hypothesis 3
+Correlation b/w percieved accuracy and sharing rating
+```{r}
+head(data,10)
+cor.test(data$PercAccuracy, data$Sharing, method = "spearman")
+```
+
+```{r}
+# library (tidyverse)
+#import library for ggplot
+library(ggplot2)
+library(dplyr)
+
+avgDataForSharingAndAccuracy <- data.frame(avgData) %>%
+  group_by(ParticipantPublicID) %>%
+  summarize(Sharing = mean(Sharing), 
+            PercAccuracy = mean(PercAccuracy))
+
+head(avgDataForSharingAndAccuracy, 10)
+
+# Fit a linear regression model
+model <- lm(Sharing ~ PercAccuracy, data = avgDataForSharingAndAccuracy)
+
+# View the summary of the model
+summary(model)
+
+# Plot the data and the regression line
+ggplot(avgDataForSharingAndAccuracy, aes(x=PercAccuracy, y=Sharing)) + 
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(x="Perceived Accuracy Rating", y="Sharing Rating") +
+  theme_dark()
+```
+
+# Hypothesis 3
+
+
+# Hypotheses 4
+Mean sharing rating b/w participants who saw a trues statement and the ones who saw false statement
+```{r}
+#first we check if the variances are equal
+bartlett.test(Sharing ~ True1, data = data)
+```
+
+```{r}
+#separate groups based on the truth value of the statement
+truth_data <- data[data$True1 == 1,]
+false_data <- data[data$True1 == 0,]
+
+#check if the variances are equal using F test
+var.test(truth_data$Sharing, false_data$Sharing)
+```
+
+```{r}
+t.test(truth_data$Sharing, false_data$Sharing, var.equal = FALSE)
+```
+
+# Hypothesis 5
+Mean sharing rating b/w participants who were in sharing block first vs the accuracy block first
+
+```{r}
+library(readxl)
+#read the xlsx file using readxl
+data1 <- readxl::read_excel("Data/Exp1/ResSubjLevel_Exp1.xlsx")
+#take only the columns titled ID1 and ShareFirst1
+head(data1, 10)
+data1 <- data1[,c(1,9)]
+head(data1, 10)
+```
+
+```{r}
+#now in the original data, we separate them based on whether ShareFirst1 is 1 or 0 in data1 for each participant
+#we then take the mean of the sharing rating for each group
+avgDataGroupedByPID <- data.frame(avgData) %>%
+  group_by(ParticipantPublicID) %>%
+  summarize(Sharing = mean(Sharing), 
+            PercAccuracy = mean(PercAccuracy), .groups = 'keep')
+dim(avgDataGroupedByPID)
+dim(data1)
+```
+  
+```{r}
+merged_df <- merge(avgDataGroupedByPID, data1, by.x = "ParticipantPublicID", by.y = "ID1")
+#rename the column named ShareFirst1...9 to ShareFirst
+colnames(merged_df)[colnames(merged_df) == "ShareFirst1...9"] <- "ShareFirst"
+head(merged_df, 10)
+```
+
+```{r}
+merged_df <- merge(data, data1, by.x = "ParticipantPublicID", by.y = "ID1")
+#rename the column named ShareFirst1...9 to ShareFirst
+colnames(merged_df)[colnames(merged_df) == "ShareFirst1...9"] <- "ShareFirst"
+head(merged_df, 10)
+```
+
+```{r}
+share_first <- merged_df[merged_df$ShareFirst == 1,]
+acc_first <- merged_df[merged_df$ShareFirst == 0,]
+```
+
+```{r}
+head(share_first, 10)
+```
+
+```{r}
+head(acc_first, 10)
+```
+
+```{r}
+#check if the variances are equal using F test
+var.test(share_first$Sharing, acc_first$Sharing)
+```
+
+```{r}
+#perform t test
+t.test(share_first$Sharing, acc_first$Sharing, var.equal = TRUE)
+```
+
+```{r}
+#check if the variances are equal using F test
+var.test(share_first$PercAccuracy, acc_first$PercAccuracy)
+#perform t test
+t.test(share_first$PercAccuracy, acc_first$PercAccuracy, var.equal = TRUE)
+```
